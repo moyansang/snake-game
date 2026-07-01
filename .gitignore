@@ -1,0 +1,19 @@
+# 配置文件（含个人设置）
+snake_config.json
+snake_save.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.spec
+
+# 打包产物
+*.exe
+
+# 系统文件
+Thumbs.db
+.DS_Store
