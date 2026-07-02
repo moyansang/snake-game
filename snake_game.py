@@ -255,7 +255,7 @@ class MainMenu(tk.Frame):
                                    command=self.exit_game, **bs)
         self.btn_exit.pack(pady=8)
         self._hover(self.btn_exit, "#e94560", "#ff6b81")
-        tk.Label(self, text="方向键/WASD 移动 | 空格暂停 | +/- 调速 | F11 全屏 | ESC 返回",
+        tk.Label(self, text="方向键/WASD 移动  |  空格暂停  |  +/- 调速  |  ESC 返回菜单",
                  font=("微软雅黑", 9), fg="#666666", bg="#1a1a2e").pack(side=tk.BOTTOM, pady=15)
     def _hover(self, btn, n, h):
         btn.bind("<Enter>", lambda e: btn.config(bg=h))
@@ -340,8 +340,7 @@ class GameScreen(tk.Frame):
                                      fg="#888888", bg="#16213e")
         self.speed_label.pack(side=tk.LEFT, padx=5)
 
-        mode_text = "全屏" if is_fs else "窗口"
-        self.hint_label = tk.Label(self.info_frame, text=f"{mode_text} | F11 切换",
+        self.hint_label = tk.Label(self.info_frame, text="ESC 返回菜单",
                                     font=("微软雅黑", 9),
                                     fg="#666666", bg="#16213e")
         self.hint_label.pack(side=tk.RIGHT, padx=15)
@@ -431,9 +430,6 @@ class GameScreen(tk.Frame):
 
     def on_key(self, event):
         key = event.keysym
-        if key == "F11":
-            self.app.toggle_fullscreen()
-            return
         if key == "Escape":
             if not self.game_over:
                 save_game({"snake": self.snake, "direction": self.direction,
@@ -665,18 +661,7 @@ class App:
             wh = self.window.winfo_height()
             self.window.geometry(f"+{(sw - ww) // 2}+{(sh - wh) // 2}")
 
-    def toggle_fullscreen(self):
-        current = self.window.attributes("-fullscreen")
-        self.window.attributes("-fullscreen", not current)
-        self.config["fullscreen"] = not current
-        save_config(self.config)
-        if isinstance(self.current_frame, GameScreen):
-            self.window.after(100, self.start_game, load_save())
-
     def _global_key(self, event):
-        if event.keysym == "F11":
-            self.toggle_fullscreen()
-            return
         if isinstance(self.current_frame, GameScreen):
             self.current_frame.on_key(event)
 
@@ -691,7 +676,14 @@ class App:
         self.current_frame = GameScreen(self.window, self, load_data)
 
     def on_config_changed(self):
+        old_fs = self.config.get("fullscreen", False)
+        old_res = self.config.get("resolution", "1920x1080")
         self.config = load_config()
-
+        new_fs = self.config.get("fullscreen", False)
+        new_res = self.config.get("resolution", "1920x1080")
+        if old_fs != new_fs or old_res != new_res:
+            self._apply_display_mode()
+            if isinstance(self.current_frame, GameScreen):
+                self.window.after(100, self.start_game, load_save())
 if __name__ == "__main__":
     App()
