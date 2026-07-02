@@ -12,7 +12,8 @@ CONFIG_FILE = "snake_config.json"
 
 # ==================== 配置 ====================
 def load_config():
-    default = {"sound": True, "volume": 70, "size": "medium", "speed": 5}
+    default = {"sound": True, "volume": 70, "resolution": "1920x1080",
+               "fullscreen": False, "speed": 5}
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             cfg = json.load(f)
@@ -94,16 +95,16 @@ class SettingsDialog(tk.Toplevel):
         self.configure(bg="#1a1a2e")
         self.transient(parent)
         self.grab_set()
-        w, h = 360, 440
+        w, h = 380, 480
         px = parent.winfo_x() + (parent.winfo_width() - w) // 2
         py = parent.winfo_y() + (parent.winfo_height() - h) // 2
         self.geometry(f"{w}x{h}+{px}+{py}")
         tk.Label(self, text="⚙ 游戏设置", font=("微软雅黑", 16, "bold"),
-                 fg="#e94560", bg="#1a1a2e").pack(pady=(16, 10))
+                 fg="#e94560", bg="#1a1a2e").pack(pady=(14, 8))
 
         # ---- 声音开关 ----
         row1 = tk.Frame(self, bg="#1a1a2e")
-        row1.pack(fill=tk.X, padx=30, pady=5)
+        row1.pack(fill=tk.X, padx=30, pady=4)
         tk.Label(row1, text="🔊 游戏声音", font=("微软雅黑", 13),
                  fg="#ffffff", bg="#1a1a2e").pack(side=tk.LEFT)
         self.sound_var = tk.BooleanVar(value=self.config.get("sound", True))
@@ -116,7 +117,7 @@ class SettingsDialog(tk.Toplevel):
 
         # ---- 音量 ----
         row2 = tk.Frame(self, bg="#1a1a2e")
-        row2.pack(fill=tk.X, padx=30, pady=5)
+        row2.pack(fill=tk.X, padx=30, pady=4)
         tk.Label(row2, text="🔉 音量", font=("微软雅黑", 13),
                  fg="#ffffff", bg="#1a1a2e").pack(side=tk.LEFT)
         vol_frame = tk.Frame(row2, bg="#1a1a2e")
@@ -136,27 +137,41 @@ class SettingsDialog(tk.Toplevel):
 
         # ---- 试听 ----
         test_frame = tk.Frame(self, bg="#1a1a2e")
-        test_frame.pack(fill=tk.X, padx=30, pady=2)
+        test_frame.pack(fill=tk.X, padx=30, pady=1)
         tk.Button(test_frame, text="🔔 试听", font=("微软雅黑", 10),
                   bg="#0f3460", fg="#ffffff", relief=tk.FLAT, cursor="hand2",
                   command=self.test_sound).pack(side=tk.RIGHT)
 
-        # ---- 界面大小 ----
+        # ---- 分辨率 ----
         row3 = tk.Frame(self, bg="#1a1a2e")
-        row3.pack(fill=tk.X, padx=30, pady=5)
-        tk.Label(row3, text="📐 界面大小", font=("微软雅黑", 13),
+        row3.pack(fill=tk.X, padx=30, pady=4)
+        tk.Label(row3, text="📺 分辨率", font=("微软雅黑", 13),
                  fg="#ffffff", bg="#1a1a2e").pack(side=tk.LEFT)
-        self.size_var = tk.StringVar(value=self.config.get("size", "medium"))
-        size_opt = tk.OptionMenu(row3, self.size_var, "small", "medium", "large",
-                                  command=lambda _: None)
-        size_opt.config(font=("微软雅黑", 11), bg="#0f3460", fg="#ffffff", width=8,
-                         relief=tk.FLAT)
-        size_opt["menu"].config(bg="#16213e", fg="#ffffff", font=("微软雅黑", 11))
-        size_opt.pack(side=tk.RIGHT)
+        self.res_var = tk.StringVar(value=self.config.get("resolution", "1920x1080"))
+        res_opt = tk.OptionMenu(row3, self.res_var, "1920x1080", "1920x1440",
+                                 command=lambda _: None)
+        res_opt.config(font=("微软雅黑", 11), bg="#0f3460", fg="#ffffff", width=14,
+                        relief=tk.FLAT)
+        res_opt["menu"].config(bg="#16213e", fg="#ffffff", font=("微软雅黑", 11))
+        res_opt.pack(side=tk.RIGHT)
+
+        # ---- 全屏 ----
+        row3b = tk.Frame(self, bg="#1a1a2e")
+        row3b.pack(fill=tk.X, padx=30, pady=4)
+        tk.Label(row3b, text="🖥 全屏模式", font=("微软雅黑", 13),
+                 fg="#ffffff", bg="#1a1a2e").pack(side=tk.LEFT)
+        self.fs_var = tk.BooleanVar(value=self.config.get("fullscreen", False))
+        self.fs_btn = tk.Button(row3b, text="开" if self.fs_var.get() else "关",
+                                 font=("微软雅黑", 11),
+                                 bg="#0f3460" if self.fs_var.get() else "#555555",
+                                 fg="#ffffff", relief=tk.FLAT, cursor="hand2",
+                                 command=self.toggle_fullscreen,
+                                 width=6, height=1)
+        self.fs_btn.pack(side=tk.RIGHT)
 
         # ---- 速度 ----
         row4 = tk.Frame(self, bg="#1a1a2e")
-        row4.pack(fill=tk.X, padx=30, pady=5)
+        row4.pack(fill=tk.X, padx=30, pady=4)
         tk.Label(row4, text="⚡ 游戏速度", font=("微软雅黑", 13),
                  fg="#ffffff", bg="#1a1a2e").pack(side=tk.LEFT)
         spd_frame = tk.Frame(row4, bg="#1a1a2e")
@@ -177,7 +192,7 @@ class SettingsDialog(tk.Toplevel):
 
         # ---- 按钮 ----
         btn_frame = tk.Frame(self, bg="#1a1a2e")
-        btn_frame.pack(pady=16)
+        btn_frame.pack(pady=14)
 
         tk.Button(btn_frame, text="保存", font=("微软雅黑", 12, "bold"),
                   bg="#00ff88", fg="#1a1a2e", relief=tk.FLAT, cursor="hand2",
@@ -201,6 +216,12 @@ class SettingsDialog(tk.Toplevel):
         self.sound_btn.config(text="开" if self.sound_var.get() else "关",
                                bg="#0f3460" if self.sound_var.get() else "#555555")
 
+    def toggle_fullscreen(self):
+        current = self.fs_var.get()
+        self.fs_var.set(not current)
+        self.fs_btn.config(text="开" if self.fs_var.get() else "关",
+                            bg="#0f3460" if self.fs_var.get() else "#555555")
+
     def test_sound(self):
         temp_cfg = {"sound": True, "volume": self.vol_var.get()}
         play_sound(temp_cfg, 660, 120)
@@ -208,7 +229,8 @@ class SettingsDialog(tk.Toplevel):
     def save_settings(self):
         self.config["sound"] = self.sound_var.get()
         self.config["volume"] = self.vol_var.get()
-        self.config["size"] = self.size_var.get()
+        self.config["resolution"] = self.res_var.get()
+        self.config["fullscreen"] = self.fs_var.get()
         self.config["speed"] = self.speed_var.get()
         save_config(self.config)
         self.destroy()
@@ -252,7 +274,7 @@ class MainMenu(tk.Frame):
                                    command=self.exit_game, **btn_style)
         self.btn_exit.pack(pady=8)
         self._add_hover(self.btn_exit, "#e94560", "#ff6b81")
-        tk.Label(self, text="方向键/WASD 移动  |  空格暂停  |  +/- 调速  |  ESC 返回菜单",
+        tk.Label(self, text="方向键/WASD 移动 | 空格暂停 | +/- 调速 | F11 全屏 | ESC 返回",
                  font=("微软雅黑", 9), fg="#666666", bg="#1a1a2e").pack(side=tk.BOTTOM, pady=15)
     def _add_hover(self, btn, normal, hover):
         btn.bind("<Enter>", lambda e: btn.config(bg=hover))
@@ -304,12 +326,14 @@ class GameScreen(tk.Frame):
         self.app = app
         self.config = app.config
 
-        size_map = {"small": 20, "medium": 25, "large": 30}
-        self.CELL_SIZE = size_map.get(self.config.get("size", "medium"), 25)
-        # 扩大地图
-        target_w, target_h = 1500, 1200
-        self.COLS = max(24, target_w // self.CELL_SIZE)
-        self.ROWS = max(18, target_h // self.CELL_SIZE)
+        # 根据分辨率计算地图尺寸
+        res_str = self.config.get("resolution", "1920x1080")
+        res_w, res_h = [int(x) for x in res_str.split("x")]
+        # CELL_SIZE 按分辨率自适应: 约每格 35px
+        self.CELL_SIZE = max(28, res_w // 55)
+        # 格子数填满分辨率（留 40px 给顶部信息栏）
+        self.COLS = res_w // self.CELL_SIZE
+        self.ROWS = (res_h - 40) // self.CELL_SIZE
         self.WIDTH = self.COLS * self.CELL_SIZE
         self.HEIGHT = self.ROWS * self.CELL_SIZE
 
@@ -331,7 +355,7 @@ class GameScreen(tk.Frame):
                                      fg="#888888", bg="#16213e")
         self.speed_label.pack(side=tk.LEFT, padx=5)
 
-        self.hint_label = tk.Label(self.info_frame, text="ESC 返回菜单",
+        self.hint_label = tk.Label(self.info_frame, text="F11 全屏切换",
                                     font=("微软雅黑", 9),
                                     fg="#666666", bg="#16213e")
         self.hint_label.pack(side=tk.RIGHT, padx=15)
@@ -342,8 +366,6 @@ class GameScreen(tk.Frame):
         self.speed_level = self.config.get("speed", 5)
         self.base_speed = speed_delays.get(self.speed_level, 120)
         self.step_count = 0
-
-        # 障碍物
         self.obstacles = []
 
         if load_data:
@@ -393,14 +415,11 @@ class GameScreen(tk.Frame):
                 break
 
     def spawn_obstacles(self):
-        """随机生成 1~5 个障碍物，位置分散，不靠墙"""
         count = random.randint(1, 5)
         self.obstacles = []
-        # 可用区域：去掉最外圈（四周墙壁）
         min_x, max_x = 2, self.COLS - 3
         min_y, max_y = 2, self.ROWS - 3
 
-        # 把地图分成几个区域，保证分散
         zones = []
         cols_per_zone = max(2, (max_x - min_x + 1) // 3)
         rows_per_zone = max(2, (max_y - min_y + 1) // 2)
@@ -412,7 +431,6 @@ class GameScreen(tk.Frame):
                     min_y + zy * rows_per_zone,
                     min_y + (zy + 1) * rows_per_zone - 1
                 ))
-
         random.shuffle(zones)
         chosen_zones = zones[:count]
 
@@ -426,7 +444,6 @@ class GameScreen(tk.Frame):
                 x = random.randint(zx1, zx2)
                 y = random.randint(zy1, zy2)
                 if (x, y) not in used:
-                    # 检查与已有障碍物的最小距离
                     too_close = False
                     for ox, oy in self.obstacles:
                         if abs(x - ox) < 3 and abs(y - oy) < 3:
@@ -440,6 +457,10 @@ class GameScreen(tk.Frame):
 
     def on_key(self, event):
         key = event.keysym
+        # F11 全屏切换
+        if key == "F11":
+            self.app.toggle_fullscreen()
+            return
         if key == "Escape":
             if not self.game_over:
                 data = {
@@ -472,7 +493,6 @@ class GameScreen(tk.Frame):
             elif key == "space":
                 self.paused = not self.paused
             elif key in ("plus", "equal", "KP_Add"):
-                # 加速
                 if self.speed_level < 10:
                     self.speed_level += 1
                     speed_delays = {1: 200, 2: 180, 3: 160, 4: 140, 5: 120,
@@ -481,7 +501,6 @@ class GameScreen(tk.Frame):
                     self.speed = max(self.speed, self.base_speed)
                     self.speed_label.config(text=f"速度: {self.speed_level}")
             elif key in ("minus", "KP_Subtract"):
-                # 减速
                 if self.speed_level > 1:
                     self.speed_level -= 1
                     speed_delays = {1: 200, 2: 180, 3: 160, 4: 140, 5: 120,
@@ -500,17 +519,12 @@ class GameScreen(tk.Frame):
         head_x, head_y = self.snake[0]
         new_head = (head_x + self.direction[0], head_y + self.direction[1])
 
-        # 碰墙
         if not (0 <= new_head[0] < self.COLS and 0 <= new_head[1] < self.ROWS):
             self.end_game()
             return
-
-        # 碰自己
         if new_head in self.snake:
             self.end_game()
             return
-
-        # 碰障碍物
         if new_head in self.obstacles:
             self.end_game()
             return
@@ -533,7 +547,6 @@ class GameScreen(tk.Frame):
     def draw(self):
         self.canvas.delete("all")
 
-        # 网格线
         for i in range(self.COLS):
             x = i * self.CELL_SIZE
             self.canvas.create_line(x, 0, x, self.HEIGHT, fill="#16213e")
@@ -541,7 +554,6 @@ class GameScreen(tk.Frame):
             y = i * self.CELL_SIZE
             self.canvas.create_line(0, y, self.WIDTH, y, fill="#16213e")
 
-        # 蛇
         for i, (sx, sy) in enumerate(self.snake):
             x1 = sx * self.CELL_SIZE + 2
             y1 = sy * self.CELL_SIZE + 2
@@ -550,7 +562,6 @@ class GameScreen(tk.Frame):
             color = "#0f3460" if i == 0 else "#00ff88"
             self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
 
-        # 食物
         if self.food:
             fx, fy = self.food
             cx = fx * self.CELL_SIZE + self.CELL_SIZE // 2
@@ -559,7 +570,6 @@ class GameScreen(tk.Frame):
             self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
                                      fill="#e94560", outline="")
 
-        # 障碍物
         for ox, oy in self.obstacles:
             x1 = ox * self.CELL_SIZE + 4
             y1 = oy * self.CELL_SIZE + 4
@@ -568,7 +578,6 @@ class GameScreen(tk.Frame):
             self.canvas.create_rectangle(x1, y1, x2, y2,
                                           fill="#8b4513", outline="#a0522d")
 
-        # 暂停
         if self.paused and not self.game_over:
             self.canvas.create_text(self.WIDTH // 2, self.HEIGHT // 2,
                                      text="⏸ 暂停中", fill="#ffffff",
@@ -627,29 +636,70 @@ class App:
     def __init__(self):
         self.window = tk.Tk()
         self.window.title("🐍 贪吃蛇")
-        self.window.resizable(False, False)
         self.config = load_config()
-        self._apply_window_size()
-        self.window.update_idletasks()
-        sw = self.window.winfo_screenwidth()
-        sh = self.window.winfo_screenheight()
-        ww = self.window.winfo_width()
-        wh = self.window.winfo_height()
-        x = (sw - ww) // 2
-        y = (sh - wh) // 2
-        self.window.geometry(f"+{x}+{y}")
+        self._apply_fullscreen()
         self.window.configure(bg="#1a1a2e")
         self.window.bind("<KeyPress>", self._global_key)
         self.current_frame = None
         self.show_menu()
         self.window.mainloop()
 
-    def _apply_window_size(self):
-        sm = {"small": (960, 720), "medium": (1200, 900), "large": (1500, 1100)}
-        w, h = sm.get(self.config.get("size", "medium"), (600, 500))
-        self.window.geometry(f"{w}x{h}")
+    def _apply_fullscreen(self):
+        fs = self.config.get("fullscreen", False)
+        self.window.attributes("-fullscreen", fs)
+        if not fs:
+            res_str = self.config.get("resolution", "1920x1080")
+            w, h = [int(x) for x in res_str.split("x")]
+            # 窗口模式下半屏显示
+            w = w // 2
+            h = h // 2
+            self.window.geometry(f"{w}x{h}")
+            self.window.resizable(False, False)
+            # 居中
+            self.window.update_idletasks()
+            sw = self.window.winfo_screenwidth()
+            sh = self.window.winfo_screenheight()
+            ww = self.window.winfo_width()
+            wh = self.window.winfo_height()
+            x = (sw - ww) // 2
+            y = (sh - wh) // 2
+            self.window.geometry(f"+{x}+{y}")
+        else:
+            self.window.resizable(False, False)
+
+    def toggle_fullscreen(self):
+        current = self.window.attributes("-fullscreen")
+        self.window.attributes("-fullscreen", not current)
+        self.config["fullscreen"] = not current
+        save_config(self.config)
+        if not current and not self.config.get("fullscreen", False):
+            pass  # 保持当前
+        elif current and not self.config.get("fullscreen", False):
+            # 退出全屏 -> 窗口模式
+            res_str = self.config.get("resolution", "1920x1080")
+            w, h = [int(x) for x in res_str.split("x")]
+            w, h = w // 2, h // 2
+            self.window.geometry(f"{w}x{h}")
+            self.window.update_idletasks()
+            sw = self.window.winfo_screenwidth()
+            sh = self.window.winfo_screenheight()
+            ww = self.window.winfo_width()
+            wh = self.window.winfo_height()
+            x = (sw - ww) // 2
+            y = (sh - wh) // 2
+            self.window.geometry(f"+{x}+{y}")
+        # 刷新画面
+        if isinstance(self.current_frame, GameScreen):
+            self.window.after(100, self._refresh_game)
+
+    def _refresh_game(self):
+        save = load_save()
+        self.start_game(load_data=save)
 
     def _global_key(self, event):
+        if event.keysym == "F11":
+            self.toggle_fullscreen()
+            return
         if hasattr(self, "current_frame") and self.current_frame:
             if isinstance(self.current_frame, GameScreen):
                 self.current_frame.on_key(event)
@@ -657,17 +707,17 @@ class App:
     def show_menu(self):
         if self.current_frame:
             self.current_frame.destroy()
-        self._apply_window_size()
+        # 菜单不需要全屏处理，已在构造时完成
         self.current_frame = MainMenu(self.window, self)
 
     def start_game(self, load_data=None):
         if self.current_frame:
             self.current_frame.destroy()
-        self._apply_window_size()
         self.current_frame = GameScreen(self.window, self, load_data)
 
     def on_config_changed(self):
         self.config = load_config()
+        self._apply_fullscreen()
 
 if __name__ == "__main__":
     App()
