@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 import random
 import json
 import os
@@ -12,7 +12,7 @@ CONFIG_FILE = "snake_config.json"
 
 # ==================== 配置 ====================
 def load_config():
-    default = {"sound": True, "volume": 70, "size": "medium"}
+    default = {"sound": True, "volume": 70, "size": "medium", "speed": 5}
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             cfg = json.load(f)
@@ -52,17 +52,14 @@ def delete_save():
 
 # ==================== 音效系统 ====================
 def _make_wav(freq, duration_ms, volume):
-    """生成 WAV 字节数据，支持频率、时长和音量 (0-100)"""
     sample_rate = 8000
     num_samples = int(sample_rate * duration_ms / 1000)
     amplitude = int(volume * 32767 / 100)
-
     data = bytearray()
     for i in range(num_samples):
         t = i / sample_rate
         sample = int(amplitude * math.sin(2 * math.pi * freq * t))
         data.extend(struct.pack("<h", max(-32768, min(32767, sample))))
-
     wav = bytearray()
     wav.extend(b"RIFF")
     wav.extend(struct.pack("<I", 36 + len(data)))
@@ -97,15 +94,12 @@ class SettingsDialog(tk.Toplevel):
         self.configure(bg="#1a1a2e")
         self.transient(parent)
         self.grab_set()
-
-        w, h = 360, 380
+        w, h = 360, 440
         px = parent.winfo_x() + (parent.winfo_width() - w) // 2
         py = parent.winfo_y() + (parent.winfo_height() - h) // 2
         self.geometry(f"{w}x{h}+{px}+{py}")
-
-        # 标题
         tk.Label(self, text="⚙ 游戏设置", font=("微软雅黑", 16, "bold"),
-                 fg="#e94560", bg="#1a1a2e").pack(pady=(18, 12))
+                 fg="#e94560", bg="#1a1a2e").pack(pady=(16, 10))
 
         # ---- 声音开关 ----
         row1 = tk.Frame(self, bg="#1a1a2e")
@@ -117,35 +111,30 @@ class SettingsDialog(tk.Toplevel):
                                     font=("微软雅黑", 11),
                                     bg="#0f3460" if self.sound_var.get() else "#555555",
                                     fg="#ffffff", relief=tk.FLAT, cursor="hand2",
-                                    command=self.toggle_sound,
-                                    width=6, height=1)
+                                    command=self.toggle_sound, width=6, height=1)
         self.sound_btn.pack(side=tk.RIGHT)
 
-        # ---- 音量滑块 ----
+        # ---- 音量 ----
         row2 = tk.Frame(self, bg="#1a1a2e")
         row2.pack(fill=tk.X, padx=30, pady=5)
         tk.Label(row2, text="🔉 音量", font=("微软雅黑", 13),
                  fg="#ffffff", bg="#1a1a2e").pack(side=tk.LEFT)
-
         vol_frame = tk.Frame(row2, bg="#1a1a2e")
         vol_frame.pack(side=tk.RIGHT)
-
         self.vol_label = tk.Label(vol_frame, text=str(self.config.get("volume", 70)),
                                    font=("微软雅黑", 10, "bold"),
                                    fg="#00ff88", bg="#1a1a2e", width=4)
         self.vol_label.pack(side=tk.RIGHT, padx=(4, 0))
-
         self.vol_var = tk.IntVar(value=self.config.get("volume", 70))
         self.vol_slider = tk.Scale(
             vol_frame, from_=0, to=100, orient=tk.HORIZONTAL,
             variable=self.vol_var, length=120, showvalue=False,
             bg="#1a1a2e", fg="#00ff88", troughcolor="#16213e",
             activebackground="#1a508b", highlightthickness=0,
-            command=lambda v: self._on_vol_change()
-        )
+            command=lambda v: self._on_vol_change())
         self.vol_slider.pack(side=tk.RIGHT)
 
-        # 试听按钮
+        # ---- 试听 ----
         test_frame = tk.Frame(self, bg="#1a1a2e")
         test_frame.pack(fill=tk.X, padx=30, pady=2)
         tk.Button(test_frame, text="🔔 试听", font=("微软雅黑", 10),
@@ -165,20 +154,46 @@ class SettingsDialog(tk.Toplevel):
         size_opt["menu"].config(bg="#16213e", fg="#ffffff", font=("微软雅黑", 11))
         size_opt.pack(side=tk.RIGHT)
 
+        # ---- 速度 ----
+        row4 = tk.Frame(self, bg="#1a1a2e")
+        row4.pack(fill=tk.X, padx=30, pady=5)
+        tk.Label(row4, text="⚡ 游戏速度", font=("微软雅黑", 13),
+                 fg="#ffffff", bg="#1a1a2e").pack(side=tk.LEFT)
+        spd_frame = tk.Frame(row4, bg="#1a1a2e")
+        spd_frame.pack(side=tk.RIGHT)
+        speed_labels = {1: "🐢", 3: "🐇", 5: "🚀", 7: "⚡", 10: "💀"}
+        self.speed_label = tk.Label(spd_frame,
+            text=speed_labels.get(self.config.get("speed", 5), ""),
+            font=("微软雅黑", 11), fg="#00ff88", bg="#1a1a2e")
+        self.speed_label.pack(side=tk.RIGHT, padx=(4, 0))
+        self.speed_var = tk.IntVar(value=self.config.get("speed", 5))
+        self.speed_slider = tk.Scale(
+            spd_frame, from_=1, to=10, orient=tk.HORIZONTAL,
+            variable=self.speed_var, length=120, showvalue=False,
+            bg="#1a1a2e", fg="#00ff88", troughcolor="#16213e",
+            activebackground="#1a508b", highlightthickness=0,
+            command=lambda v: self._on_speed_change())
+        self.speed_slider.pack(side=tk.RIGHT)
+
         # ---- 按钮 ----
         btn_frame = tk.Frame(self, bg="#1a1a2e")
-        btn_frame.pack(pady=18)
+        btn_frame.pack(pady=16)
 
         tk.Button(btn_frame, text="保存", font=("微软雅黑", 12, "bold"),
                   bg="#00ff88", fg="#1a1a2e", relief=tk.FLAT, cursor="hand2",
                   width=10, height=1, command=self.save_settings).pack(side=tk.LEFT, padx=5)
-
         tk.Button(btn_frame, text="取消", font=("微软雅黑", 12),
                   bg="#555555", fg="#ffffff", relief=tk.FLAT, cursor="hand2",
                   width=10, height=1, command=self.destroy).pack(side=tk.LEFT, padx=5)
 
     def _on_vol_change(self):
         self.vol_label.config(text=str(self.vol_var.get()))
+
+    def _on_speed_change(self):
+        speed_labels = {1: "🐢", 3: "🐇", 5: "🚀", 7: "⚡", 10: "💀"}
+        v = self.speed_var.get()
+        closest = min(speed_labels.keys(), key=lambda k: abs(k - v))
+        self.speed_label.config(text=speed_labels[closest])
 
     def toggle_sound(self):
         current = self.sound_var.get()
@@ -194,6 +209,7 @@ class SettingsDialog(tk.Toplevel):
         self.config["sound"] = self.sound_var.get()
         self.config["volume"] = self.vol_var.get()
         self.config["size"] = self.size_var.get()
+        self.config["speed"] = self.speed_var.get()
         save_config(self.config)
         self.destroy()
         self.on_close()
@@ -204,24 +220,17 @@ class MainMenu(tk.Frame):
         super().__init__(parent, bg="#1a1a2e")
         self.app = app
         self.place(relwidth=1, relheight=1)
-
-        title = tk.Label(self, text="🐍 贪 吃 蛇", font=("微软雅黑", 36, "bold"),
-                         fg="#00ff88", bg="#1a1a2e")
-        title.pack(pady=(50, 5))
-
-        subtitle = tk.Label(self, text="SNAKE GAME", font=("微软雅黑", 12),
-                            fg="#e94560", bg="#1a1a2e")
-        subtitle.pack(pady=(0, 30))
-
+        tk.Label(self, text="🐍 贪 吃 蛇", font=("微软雅黑", 36, "bold"),
+                 fg="#00ff88", bg="#1a1a2e").pack(pady=(50, 5))
+        tk.Label(self, text="SNAKE GAME", font=("微软雅黑", 12),
+                 fg="#e94560", bg="#1a1a2e").pack(pady=(0, 30))
         btn_style = {"font": ("微软雅黑", 16, "bold"), "width": 16, "height": 1,
                      "relief": tk.FLAT, "cursor": "hand2", "bd": 0}
-
         self.btn_start = tk.Button(self, text="🎮  开始游戏", bg="#0f3460", fg="#ffffff",
                                     activebackground="#1a508b", activeforeground="#ffffff",
                                     command=self.start_game, **btn_style)
         self.btn_start.pack(pady=8)
         self._add_hover(self.btn_start, "#0f3460", "#1a508b")
-
         has_save = load_save() is not None
         self.btn_continue = tk.Button(self, text="▶  继续游戏",
                                        bg="#0f3460" if has_save else "#333333",
@@ -233,39 +242,30 @@ class MainMenu(tk.Frame):
         self.btn_continue.pack(pady=8)
         if has_save:
             self._add_hover(self.btn_continue, "#0f3460", "#1a508b")
-
         self.btn_settings = tk.Button(self, text="⚙  设置", bg="#0f3460", fg="#ffffff",
                                        activebackground="#1a508b", activeforeground="#ffffff",
                                        command=self.open_settings, **btn_style)
         self.btn_settings.pack(pady=8)
         self._add_hover(self.btn_settings, "#0f3460", "#1a508b")
-
         self.btn_exit = tk.Button(self, text="🚪  结束游戏", bg="#e94560", fg="#ffffff",
                                    activebackground="#ff6b81", activeforeground="#ffffff",
                                    command=self.exit_game, **btn_style)
         self.btn_exit.pack(pady=8)
         self._add_hover(self.btn_exit, "#e94560", "#ff6b81")
-
-        footer = tk.Label(self, text="方向键/WASD 移动  |  空格暂停  |  ESC 返回菜单",
-                          font=("微软雅黑", 9), fg="#666666", bg="#1a1a2e")
-        footer.pack(side=tk.BOTTOM, pady=15)
-
+        tk.Label(self, text="方向键/WASD 移动  |  空格暂停  |  ESC 返回菜单",
+                 font=("微软雅黑", 9), fg="#666666", bg="#1a1a2e").pack(side=tk.BOTTOM, pady=15)
     def _add_hover(self, btn, normal, hover):
         btn.bind("<Enter>", lambda e: btn.config(bg=hover))
         btn.bind("<Leave>", lambda e: btn.config(bg=normal))
-
     def start_game(self):
         delete_save()
         self.app.start_game()
-
     def continue_game(self):
         data = load_save()
         if data:
             self.app.start_game(load_data=data)
-
     def open_settings(self):
         SettingsDialog(self, self.app.config, self.app.on_config_changed)
-
     def exit_game(self):
         if messagebox.askokcancel("退出", "确定要退出游戏吗？"):
             self.app.window.destroy()
@@ -278,14 +278,11 @@ class Countdown(tk.Frame):
         self.cfg = config
         self.place(relwidth=1, relheight=1)
         self.tkraise()
-
         self.label = tk.Label(self, text="", font=("微软雅黑", 80, "bold"),
                               fg="#00ff88", bg="#1a1a2e")
         self.label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-
         self.count = 3
         self._animate()
-
     def _animate(self):
         if self.count > 0:
             self.label.config(text=str(self.count))
@@ -296,7 +293,6 @@ class Countdown(tk.Frame):
             self.label.config(text="GO!")
             play_sound(self.cfg, 880, 250)
             self.after(450, self._finish)
-
     def _finish(self):
         self.destroy()
         self.callback()
@@ -310,7 +306,6 @@ class GameScreen(tk.Frame):
 
         size_map = {"small": 20, "medium": 25, "large": 30}
         self.CELL_SIZE = size_map.get(self.config.get("size", "medium"), 25)
-
         target_w, target_h = 600, 500
         self.COLS = max(12, target_w // self.CELL_SIZE)
         self.ROWS = max(10, target_h // self.CELL_SIZE)
@@ -335,20 +330,29 @@ class GameScreen(tk.Frame):
                                     fg="#666666", bg="#16213e")
         self.hint_label.pack(side=tk.RIGHT, padx=15)
 
+        # 基础速度（根据配置）
+        speed_delays = {1: 200, 2: 180, 3: 160, 4: 140, 5: 120,
+                        6: 105, 7: 90, 8: 75, 9: 60, 10: 50}
+        self.base_speed = speed_delays.get(self.config.get("speed", 5), 120)
+
+        # 步数计数器（用于时间推移加速）
+        self.step_count = 0
+
         if load_data:
             self.snake = [tuple(s) for s in load_data["snake"]]
             self.direction = tuple(load_data["direction"])
             self.next_direction = tuple(load_data["direction"])
             self.food = tuple(load_data["food"])
             self.score = load_data["score"]
-            self.speed = load_data["speed"]
+            self.speed = load_data.get("speed", self.base_speed)
+            self.step_count = load_data.get("step_count", 0)
         else:
             self.snake = [(self.COLS // 2, self.ROWS // 2)]
             self.direction = (1, 0)
             self.next_direction = (1, 0)
             self.food = None
             self.score = 0
-            self.speed = 120
+            self.speed = self.base_speed
 
         self.game_over = False
         self.paused = False
@@ -361,7 +365,6 @@ class GameScreen(tk.Frame):
             self.spawn_food()
 
         self.draw()
-
         Countdown(self, self._after_countdown, self.config)
 
     def _after_countdown(self):
@@ -380,7 +383,6 @@ class GameScreen(tk.Frame):
 
     def on_key(self, event):
         key = event.keysym
-
         if key == "Escape":
             if not self.game_over:
                 data = {
@@ -388,15 +390,14 @@ class GameScreen(tk.Frame):
                     "direction": self.direction,
                     "food": self.food,
                     "score": self.score,
-                    "speed": self.speed
+                    "speed": self.speed,
+                    "step_count": self.step_count
                 }
                 save_game(data)
             self.app.show_menu()
             return
-
         if self.countdown_active:
             return
-
         if not self.game_over:
             if key in ("Up", "w", "W") and self.direction != (0, 1):
                 self.next_direction = (0, -1)
@@ -412,7 +413,6 @@ class GameScreen(tk.Frame):
                 play_sound(self.config, 440, 50)
             elif key == "space":
                 self.paused = not self.paused
-
         if self.game_over and key == "r":
             self.restart()
 
@@ -433,27 +433,30 @@ class GameScreen(tk.Frame):
             return
 
         self.snake.insert(0, new_head)
+        self.step_count += 1
 
         if new_head == self.food:
             self.score += 10
             self.score_label.config(text=f"得分: {self.score}")
             play_sound(self.config, 660, 60)
             self.spawn_food()
-            if self.speed > 50:
-                self.speed = max(50, self.speed - 2)
+            # 吃食物加速
+            min_speed = max(25, self.base_speed // 3)
+            self.speed = max(min_speed, self.speed - 3)
         else:
             self.snake.pop()
+            # 时间推移加速：每 15 步减 1ms
+            if self.step_count % 15 == 0 and self.speed > 30:
+                self.speed = max(30, self.speed - 1)
 
     def draw(self):
         self.canvas.delete("all")
-
         for i in range(self.COLS):
             x = i * self.CELL_SIZE
             self.canvas.create_line(x, 0, x, self.HEIGHT, fill="#16213e")
         for i in range(self.ROWS):
             y = i * self.CELL_SIZE
             self.canvas.create_line(0, y, self.WIDTH, y, fill="#16213e")
-
         for i, (sx, sy) in enumerate(self.snake):
             x1 = sx * self.CELL_SIZE + 2
             y1 = sy * self.CELL_SIZE + 2
@@ -461,7 +464,6 @@ class GameScreen(tk.Frame):
             y2 = y1 + self.CELL_SIZE - 4
             color = "#0f3460" if i == 0 else "#00ff88"
             self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
-
         if self.food:
             fx, fy = self.food
             cx = fx * self.CELL_SIZE + self.CELL_SIZE // 2
@@ -469,11 +471,9 @@ class GameScreen(tk.Frame):
             r = self.CELL_SIZE // 2 - 3
             self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
                                      fill="#e94560", outline="")
-
         if self.paused and not self.game_over:
             self.canvas.create_text(self.WIDTH // 2, self.HEIGHT // 2,
-                                     text="⏸ 暂停中",
-                                     fill="#ffffff",
+                                     text="⏸ 暂停中", fill="#ffffff",
                                      font=("微软雅黑", 28, "bold"))
 
     def end_game(self):
@@ -486,7 +486,8 @@ class GameScreen(tk.Frame):
         self.direction = (1, 0)
         self.next_direction = (1, 0)
         self.score = 0
-        self.speed = 120
+        self.speed = self.base_speed
+        self.step_count = 0
         self.game_over = False
         self.paused = False
         self.game_started = True
@@ -502,8 +503,7 @@ class GameScreen(tk.Frame):
             self.draw()
         if self.game_over:
             self.canvas.delete("all")
-            self.canvas.create_rectangle(0, 0, self.WIDTH, self.HEIGHT,
-                                          fill="#1a1a2e")
+            self.canvas.create_rectangle(0, 0, self.WIDTH, self.HEIGHT, fill="#1a1a2e")
             self.canvas.create_text(self.WIDTH // 2, self.HEIGHT // 2 - 25,
                                      text=f"游戏结束!\
 最终得分: {self.score}",
@@ -512,10 +512,8 @@ class GameScreen(tk.Frame):
                                      justify=tk.CENTER)
             self.canvas.create_text(self.WIDTH // 2, self.HEIGHT // 2 + 45,
                                      text="按 R 重新开始  |  ESC 返回菜单",
-                                     fill="#00ff88",
-                                     font=("微软雅黑", 12))
+                                     fill="#00ff88", font=("微软雅黑", 12))
             return
-
         self.after(self.speed, self.game_loop)
 
 # ==================== 主应用 ====================
