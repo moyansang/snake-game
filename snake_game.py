@@ -307,7 +307,7 @@ class GameScreen(tk.Frame):
         size_map = {"small": 20, "medium": 25, "large": 30}
         self.CELL_SIZE = size_map.get(self.config.get("size", "medium"), 25)
         # 扩大地图
-        target_w, target_h = 750, 600
+        target_w, target_h = 1500, 1200
         self.COLS = max(24, target_w // self.CELL_SIZE)
         self.ROWS = max(18, target_h // self.CELL_SIZE)
         self.WIDTH = self.COLS * self.CELL_SIZE
@@ -645,7 +645,7 @@ class App:
         self.window.mainloop()
 
     def _apply_window_size(self):
-        sm = {"small": (480, 400), "medium": (600, 500), "large": (720, 600)}
+        sm = {"small": (960, 720), "medium": (1200, 900), "large": (1500, 1100)}
         w, h = sm.get(self.config.get("size", "medium"), (600, 500))
         self.window.geometry(f"{w}x{h}")
 
