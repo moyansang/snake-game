@@ -374,6 +374,7 @@ class GameScreen(tk.Frame):
         self.paused = False
         self.game_started = False
         self.countdown_active = True
+        self.frame = 0
 
         self.place(relwidth=1, relheight=1)
 
@@ -505,33 +506,90 @@ class GameScreen(tk.Frame):
 
     def draw(self):
         self.canvas.delete("all")
+        self.frame += 1
+        sz = self.CELL_SIZE
+
+        # 深色背景
+        self.canvas.create_rectangle(0, 0, self.WIDTH, self.HEIGHT, fill="#0f0f1a", outline="")
+
+        # 网格线
         for i in range(self.COLS):
-            self.canvas.create_line(i * self.CELL_SIZE, 0,
-                                     i * self.CELL_SIZE, self.HEIGHT, fill="#16213e")
+            x = i * sz
+            self.canvas.create_line(x, 0, x, self.HEIGHT, fill="#1a1a2e", width=1)
         for i in range(self.ROWS):
-            self.canvas.create_line(0, i * self.CELL_SIZE,
-                                     self.WIDTH, i * self.CELL_SIZE, fill="#16213e")
-        for i, (sx, sy) in enumerate(self.snake):
-            x1, y1 = sx * self.CELL_SIZE + 2, sy * self.CELL_SIZE + 2
-            x2, y2 = x1 + self.CELL_SIZE - 4, y1 + self.CELL_SIZE - 4
-            self.canvas.create_rectangle(x1, y1, x2, y2,
-                                          fill="#0f3460" if i == 0 else "#00ff88", outline="")
+            y = i * sz
+            self.canvas.create_line(0, y, self.WIDTH, y, fill="#1a1a2e", width=1)
+
+        # 蛇身: 头暗蓝 -> 尾亮绿渐变 + 蛇头眼睛
+        n = len(self.snake)
+        for idx, (sx, sy) in enumerate(self.snake):
+            px = 3
+            x1 = sx * sz + px
+            y1 = sy * sz + px
+            x2 = x1 + sz - px * 2
+            y2 = y1 + sz - px * 2
+            if idx == 0:
+                self.canvas.create_rectangle(x1, y1, x2, y2, fill="#1a3a6e", outline="")
+                # 眼睛
+                er = max(2, sz // 7)
+                dx, dy = self.direction
+                if dx == 1:
+                    e1 = (x2 - 5, y1 + 5); e2 = (x2 - 5, y2 - 5)
+                elif dx == -1:
+                    e1 = (x1 + 5, y1 + 5); e2 = (x1 + 5, y2 - 5)
+                elif dy == 1:
+                    e1 = (x1 + 5, y2 - 5); e2 = (x2 - 5, y2 - 5)
+                else:
+                    e1 = (x1 + 5, y1 + 5); e2 = (x2 - 5, y1 + 5)
+                self.canvas.create_oval(e1[0]-er, e1[1]-er, e1[0]+er, e1[1]+er,
+                                         fill="#ffffff", outline="")
+                self.canvas.create_oval(e2[0]-er, e2[1]-er, e2[0]+er, e2[1]+er,
+                                         fill="#ffffff", outline="")
+            else:
+                t = idx / max(1, n - 1)
+                rr = int(0x00 + t * 0x50)
+                gg = int(0x66 + t * 0x99)
+                bb = int(0x44 + t * 0x40)
+                clr = f"#{rr:02x}{gg:02x}{bb:02x}"
+                self.canvas.create_rectangle(x1, y1, x2, y2, fill=clr, outline="")
+
+        # 食物: 脉冲光晕 + 高光
         if self.food:
             fx, fy = self.food
-            cx, cy = fx * self.CELL_SIZE + self.CELL_SIZE // 2, fy * self.CELL_SIZE + self.CELL_SIZE // 2
-            r = self.CELL_SIZE // 2 - 3
+            cx = fx * sz + sz // 2
+            cy = fy * sz + sz // 2
+            pulse = 2 + int(math.sin(self.frame * 0.12) * 1.5)
+            gr = sz // 2 + pulse
+            self.canvas.create_oval(cx - gr, cy - gr, cx + gr, cy + gr,
+                                     fill="", outline="#ff3355", width=2)
+            r = sz // 2 - 4
             self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
                                      fill="#e94560", outline="")
-        for ox, oy in self.obstacles:
-            x1, y1 = ox * self.CELL_SIZE + 4, oy * self.CELL_SIZE + 4
-            self.canvas.create_rectangle(x1, y1, x1 + self.CELL_SIZE - 8,
-                                          y1 + self.CELL_SIZE - 8,
-                                          fill="#8b4513", outline="#a0522d")
-        if self.paused and not self.game_over:
-            self.canvas.create_text(self.WIDTH // 2, self.HEIGHT // 2,
-                                     text="⏸ 暂停中", fill="#ffffff",
-                                     font=("微软雅黑", 28, "bold"))
+            hr = r // 3
+            self.canvas.create_oval(cx - hr - 3, cy - hr - 3, cx + hr - 3, cy + hr - 3,
+                                     fill="#ff7777", outline="")
 
+        # 障碍物: 砖块纹理
+        for ox, oy in self.obstacles:
+            px = 5
+            bx1 = ox * sz + px
+            by1 = oy * sz + px
+            bx2 = bx1 + sz - px * 2
+            by2 = by1 + sz - px * 2
+            self.canvas.create_rectangle(bx1, by1, bx2, by2,
+                                          fill="#3d2b1f", outline="#5a3d2e", width=2)
+            mx = (bx1 + bx2) // 2
+            my = (by1 + by2) // 2
+            self.canvas.create_line(bx1, my, bx2, my, fill="#2a1a10", width=1)
+            self.canvas.create_line(mx, by1, mx, my, fill="#2a1a10", width=1)
+
+        # 暂停遮罩
+        if self.paused and not self.game_over:
+            hw, hh = self.WIDTH // 2, self.HEIGHT // 2
+            self.canvas.create_rectangle(hw - 130, hh - 40, hw + 130, hh + 40,
+                                          fill="#1a1a2e", outline="#333333", width=2)
+            self.canvas.create_text(hw, hh, text="\u23f8 暂停中", fill="#ffffff",
+                                     font=("微软雅黑", 24, "bold"))
     def end_game(self):
         self.game_over = True
         play_sound(self.config, 330, 400)
@@ -633,10 +691,7 @@ class App:
         self.current_frame = GameScreen(self.window, self, load_data)
 
     def on_config_changed(self):
-        old_fs = self.config.get("fullscreen", False)
         self.config = load_config()
-        new_fs = self.config.get("fullscreen", False)
-        if old_fs != new_fs:
-            self._apply_display_mode()
-        if isinstance(self.current_frame, GameScreen):
-            self.window.after(100, self.start_game, load_save())
+
+if __name__ == "__main__":
+    App()
