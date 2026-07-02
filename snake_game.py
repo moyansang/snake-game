@@ -633,7 +633,10 @@ class App:
         self.current_frame = GameScreen(self.window, self, load_data)
 
     def on_config_changed(self):
+        old_fs = self.config.get("fullscreen", False)
         self.config = load_config()
-
-if __name__ == "__main__":
-    App()
+        new_fs = self.config.get("fullscreen", False)
+        if old_fs != new_fs:
+            self._apply_display_mode()
+        if isinstance(self.current_frame, GameScreen):
+            self.window.after(100, self.start_game, load_save())
