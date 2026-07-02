@@ -375,6 +375,7 @@ class GameScreen(tk.Frame):
         self.game_started = False
         self.countdown_active = True
         self.frame = 0
+        self.frame = 0
 
         self.place(relwidth=1, relheight=1)
 
@@ -587,6 +588,7 @@ class GameScreen(tk.Frame):
                                           fill="#1a1a2e", outline="#333333", width=2)
             self.canvas.create_text(hw, hh, text="\u23f8 暂停中", fill="#ffffff",
                                      font=("微软雅黑", 24, "bold"))
+
     def end_game(self):
         self.game_over = True
         play_sound(self.config, 330, 400)
