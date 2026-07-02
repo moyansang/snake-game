@@ -252,7 +252,7 @@ class MainMenu(tk.Frame):
                                    command=self.exit_game, **btn_style)
         self.btn_exit.pack(pady=8)
         self._add_hover(self.btn_exit, "#e94560", "#ff6b81")
-        tk.Label(self, text="方向键/WASD 移动  |  空格暂停  |  ESC 返回菜单",
+        tk.Label(self, text="方向键/WASD 移动  |  空格暂停  |  +/- 调速  |  ESC 返回菜单",
                  font=("微软雅黑", 9), fg="#666666", bg="#1a1a2e").pack(side=tk.BOTTOM, pady=15)
     def _add_hover(self, btn, normal, hover):
         btn.bind("<Enter>", lambda e: btn.config(bg=hover))
@@ -306,9 +306,10 @@ class GameScreen(tk.Frame):
 
         size_map = {"small": 20, "medium": 25, "large": 30}
         self.CELL_SIZE = size_map.get(self.config.get("size", "medium"), 25)
-        target_w, target_h = 600, 500
-        self.COLS = max(12, target_w // self.CELL_SIZE)
-        self.ROWS = max(10, target_h // self.CELL_SIZE)
+        # 扩大地图
+        target_w, target_h = 750, 600
+        self.COLS = max(24, target_w // self.CELL_SIZE)
+        self.ROWS = max(18, target_h // self.CELL_SIZE)
         self.WIDTH = self.COLS * self.CELL_SIZE
         self.HEIGHT = self.ROWS * self.CELL_SIZE
 
@@ -325,18 +326,25 @@ class GameScreen(tk.Frame):
                                      fg="#e94560", bg="#16213e")
         self.score_label.pack(side=tk.LEFT, padx=15)
 
+        self.speed_label = tk.Label(self.info_frame, text="速度: 5",
+                                     font=("微软雅黑", 10),
+                                     fg="#888888", bg="#16213e")
+        self.speed_label.pack(side=tk.LEFT, padx=5)
+
         self.hint_label = tk.Label(self.info_frame, text="ESC 返回菜单",
                                     font=("微软雅黑", 9),
                                     fg="#666666", bg="#16213e")
         self.hint_label.pack(side=tk.RIGHT, padx=15)
 
-        # 基础速度（根据配置）
+        # 基础速度
         speed_delays = {1: 200, 2: 180, 3: 160, 4: 140, 5: 120,
                         6: 105, 7: 90, 8: 75, 9: 60, 10: 50}
-        self.base_speed = speed_delays.get(self.config.get("speed", 5), 120)
-
-        # 步数计数器（用于时间推移加速）
+        self.speed_level = self.config.get("speed", 5)
+        self.base_speed = speed_delays.get(self.speed_level, 120)
         self.step_count = 0
+
+        # 障碍物
+        self.obstacles = []
 
         if load_data:
             self.snake = [tuple(s) for s in load_data["snake"]]
@@ -346,6 +354,7 @@ class GameScreen(tk.Frame):
             self.score = load_data["score"]
             self.speed = load_data.get("speed", self.base_speed)
             self.step_count = load_data.get("step_count", 0)
+            self.obstacles = [tuple(o) for o in load_data.get("obstacles", [])]
         else:
             self.snake = [(self.COLS // 2, self.ROWS // 2)]
             self.direction = (1, 0)
@@ -363,23 +372,71 @@ class GameScreen(tk.Frame):
 
         if self.food is None:
             self.spawn_food()
+        if not self.obstacles:
+            self.spawn_obstacles()
 
+        self.speed_label.config(text=f"速度: {self.speed_level}")
         self.draw()
         Countdown(self, self._after_countdown, self.config)
 
     def _after_countdown(self):
         self.countdown_active = False
         self.game_started = True
-        self.score_label.config(text=f"得分: {self.score}")
         self.game_loop()
 
     def spawn_food(self):
         while True:
             x = random.randint(0, self.COLS - 1)
             y = random.randint(0, self.ROWS - 1)
-            if (x, y) not in self.snake:
+            if (x, y) not in self.snake and (x, y) not in self.obstacles:
                 self.food = (x, y)
                 break
+
+    def spawn_obstacles(self):
+        """随机生成 1~5 个障碍物，位置分散，不靠墙"""
+        count = random.randint(1, 5)
+        self.obstacles = []
+        # 可用区域：去掉最外圈（四周墙壁）
+        min_x, max_x = 2, self.COLS - 3
+        min_y, max_y = 2, self.ROWS - 3
+
+        # 把地图分成几个区域，保证分散
+        zones = []
+        cols_per_zone = max(2, (max_x - min_x + 1) // 3)
+        rows_per_zone = max(2, (max_y - min_y + 1) // 2)
+        for zx in range(3):
+            for zy in range(2):
+                zones.append((
+                    min_x + zx * cols_per_zone,
+                    min_x + (zx + 1) * cols_per_zone - 1,
+                    min_y + zy * rows_per_zone,
+                    min_y + (zy + 1) * rows_per_zone - 1
+                ))
+
+        random.shuffle(zones)
+        chosen_zones = zones[:count]
+
+        used = set(self.snake)
+        if self.food:
+            used.add(self.food)
+
+        for zx1, zx2, zy1, zy2 in chosen_zones:
+            attempts = 0
+            while attempts < 50:
+                x = random.randint(zx1, zx2)
+                y = random.randint(zy1, zy2)
+                if (x, y) not in used:
+                    # 检查与已有障碍物的最小距离
+                    too_close = False
+                    for ox, oy in self.obstacles:
+                        if abs(x - ox) < 3 and abs(y - oy) < 3:
+                            too_close = True
+                            break
+                    if not too_close:
+                        self.obstacles.append((x, y))
+                        used.add((x, y))
+                        break
+                attempts += 1
 
     def on_key(self, event):
         key = event.keysym
@@ -391,7 +448,8 @@ class GameScreen(tk.Frame):
                     "food": self.food,
                     "score": self.score,
                     "speed": self.speed,
-                    "step_count": self.step_count
+                    "step_count": self.step_count,
+                    "obstacles": self.obstacles
                 }
                 save_game(data)
             self.app.show_menu()
@@ -413,6 +471,24 @@ class GameScreen(tk.Frame):
                 play_sound(self.config, 440, 50)
             elif key == "space":
                 self.paused = not self.paused
+            elif key in ("plus", "equal", "KP_Add"):
+                # 加速
+                if self.speed_level < 10:
+                    self.speed_level += 1
+                    speed_delays = {1: 200, 2: 180, 3: 160, 4: 140, 5: 120,
+                                    6: 105, 7: 90, 8: 75, 9: 60, 10: 50}
+                    self.base_speed = speed_delays[self.speed_level]
+                    self.speed = max(self.speed, self.base_speed)
+                    self.speed_label.config(text=f"速度: {self.speed_level}")
+            elif key in ("minus", "KP_Subtract"):
+                # 减速
+                if self.speed_level > 1:
+                    self.speed_level -= 1
+                    speed_delays = {1: 200, 2: 180, 3: 160, 4: 140, 5: 120,
+                                    6: 105, 7: 90, 8: 75, 9: 60, 10: 50}
+                    self.base_speed = speed_delays[self.speed_level]
+                    self.speed = max(self.speed, self.base_speed)
+                    self.speed_label.config(text=f"速度: {self.speed_level}")
         if self.game_over and key == "r":
             self.restart()
 
@@ -424,11 +500,18 @@ class GameScreen(tk.Frame):
         head_x, head_y = self.snake[0]
         new_head = (head_x + self.direction[0], head_y + self.direction[1])
 
+        # 碰墙
         if not (0 <= new_head[0] < self.COLS and 0 <= new_head[1] < self.ROWS):
             self.end_game()
             return
 
+        # 碰自己
         if new_head in self.snake:
+            self.end_game()
+            return
+
+        # 碰障碍物
+        if new_head in self.obstacles:
             self.end_game()
             return
 
@@ -440,23 +523,25 @@ class GameScreen(tk.Frame):
             self.score_label.config(text=f"得分: {self.score}")
             play_sound(self.config, 660, 60)
             self.spawn_food()
-            # 吃食物加速
             min_speed = max(25, self.base_speed // 3)
             self.speed = max(min_speed, self.speed - 3)
         else:
             self.snake.pop()
-            # 时间推移加速：每 15 步减 1ms
             if self.step_count % 15 == 0 and self.speed > 30:
                 self.speed = max(30, self.speed - 1)
 
     def draw(self):
         self.canvas.delete("all")
+
+        # 网格线
         for i in range(self.COLS):
             x = i * self.CELL_SIZE
             self.canvas.create_line(x, 0, x, self.HEIGHT, fill="#16213e")
         for i in range(self.ROWS):
             y = i * self.CELL_SIZE
             self.canvas.create_line(0, y, self.WIDTH, y, fill="#16213e")
+
+        # 蛇
         for i, (sx, sy) in enumerate(self.snake):
             x1 = sx * self.CELL_SIZE + 2
             y1 = sy * self.CELL_SIZE + 2
@@ -464,6 +549,8 @@ class GameScreen(tk.Frame):
             y2 = y1 + self.CELL_SIZE - 4
             color = "#0f3460" if i == 0 else "#00ff88"
             self.canvas.create_rectangle(x1, y1, x2, y2, fill=color, outline="")
+
+        # 食物
         if self.food:
             fx, fy = self.food
             cx = fx * self.CELL_SIZE + self.CELL_SIZE // 2
@@ -471,6 +558,17 @@ class GameScreen(tk.Frame):
             r = self.CELL_SIZE // 2 - 3
             self.canvas.create_oval(cx - r, cy - r, cx + r, cy + r,
                                      fill="#e94560", outline="")
+
+        # 障碍物
+        for ox, oy in self.obstacles:
+            x1 = ox * self.CELL_SIZE + 4
+            y1 = oy * self.CELL_SIZE + 4
+            x2 = x1 + self.CELL_SIZE - 8
+            y2 = y1 + self.CELL_SIZE - 8
+            self.canvas.create_rectangle(x1, y1, x2, y2,
+                                          fill="#8b4513", outline="#a0522d")
+
+        # 暂停
         if self.paused and not self.game_over:
             self.canvas.create_text(self.WIDTH // 2, self.HEIGHT // 2,
                                      text="⏸ 暂停中", fill="#ffffff",
@@ -486,14 +584,22 @@ class GameScreen(tk.Frame):
         self.direction = (1, 0)
         self.next_direction = (1, 0)
         self.score = 0
+        self.speed_level = self.config.get("speed", 5)
+        speed_delays = {1: 200, 2: 180, 3: 160, 4: 140, 5: 120,
+                        6: 105, 7: 90, 8: 75, 9: 60, 10: 50}
+        self.base_speed = speed_delays[self.speed_level]
         self.speed = self.base_speed
         self.step_count = 0
+        self.obstacles = []
+        self.food = None
         self.game_over = False
         self.paused = False
         self.game_started = True
         self.score_label.config(text="得分: 0")
+        self.speed_label.config(text=f"速度: {self.speed_level}")
         delete_save()
         self.spawn_food()
+        self.spawn_obstacles()
         self.draw()
         self.game_loop()
 
