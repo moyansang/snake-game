@@ -268,7 +268,8 @@ class MainMenu(tk.Frame):
         if data:
             self.app.start_game(load_data=data)
     def open_settings(self):
-        SettingsDialog(self, self.app.config, self.app.on_config_changed)
+        self.app._pre_fs = self.app.config.get("fullscreen", False)
+        self.app._pre_res = self.app.config.get("resolution", "1920x1080")
     def exit_game(self):
         if messagebox.askokcancel("退出", "确定要退出游戏吗？"):
             self.app.window.destroy()
@@ -676,8 +677,8 @@ class App:
         self.current_frame = GameScreen(self.window, self, load_data)
 
     def on_config_changed(self):
-        old_fs = self.config.get("fullscreen", False)
-        old_res = self.config.get("resolution", "1920x1080")
+        old_fs = getattr(self, "_pre_fs", self.config.get("fullscreen", False))
+        old_res = getattr(self, "_pre_res", self.config.get("resolution", "1920x1080"))
         self.config = load_config()
         new_fs = self.config.get("fullscreen", False)
         new_res = self.config.get("resolution", "1920x1080")
